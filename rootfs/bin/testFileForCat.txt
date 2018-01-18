@@ -1,0 +1,7 @@
+This is the content of the test file.
+Plan of Attack
+Memory Subsystem 
+Process Subsystem
+User-level Subsystem
+I/O subsystem 
+Implement /bin/init 
