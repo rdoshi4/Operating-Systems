@@ -130,18 +130,6 @@ void thread2_func()
 	//switch_to();
 	while(1);
 }
-void thread3_func()
-{
-__asm volatile("int $0x80"::"a"(90),"b"(1000));
-	//exec_binary("bin/cat");
- 	//mmap(100,0);
-//	__asm volatile("int $0x80");
-//	uint64_t addr;
-//	__asm volatile("movq %%rax, %0":"=r"(addr));
-	//uint64_t *addr=(uint64_t *)0x6500;
-	//addr[0]=1;
-	
-}
 uint64_t  ps()
 {
 char *status;
@@ -152,23 +140,11 @@ struct task * temp=init_kernel->next_task;
 	{
 		if(temp->state==1)
                 {
-                        status[0]='R';
-                        status[1]='U';
-                        status[2]='N';
-                        status[3]='N';
-                        status[4]='I';
-                        status[5]='N';
-                        status[6]='G';
-                        status[7]='\0';
+                        strcpy(status,"RUNNING");
                 }
                 if(temp->state==4)
                 {
-                        status[0]='R';
-                        status[1]='E';
-                        status[2]='A';
-                        status[3]='D';
-                        status[4]='Y';
-                        status[5]='\0';
+                       strcpy(status,"READY");
                 }
 //	memcpy((void *) buf, (void *) input_buffer, 1024);
                 kprintf("ProcessName:%s  Id %d  Status:%s   \n",temp->name,temp->pid, status);	
@@ -177,35 +153,17 @@ struct task * temp=init_kernel->next_task;
 	}
 	if(temp->state==1)
         {
-                status[0]='R';
-                status[1]='U';
-                status[2]='N';
-                status[3]='N';
-                status[4]='I';
-                status[5]='N';
-                status[6]='G';
-                status[7]='\0';
+                strcpy(status,"RUNNING");
         }
         if(temp->state==4)
         {
-                status[0]='R';
-                status[1]='E';
-                status[2]='A';
-                status[3]='D';
-                status[4]='Y';
-                status[5]='\0';
+         	strcpy(status,"READY");       
         }
 	kprintf("ProcessName:%s   Id: %d   Status:%s   \n",temp->name,temp->pid, status);
 	struct task *temp_zombies=zombie_list;
 	while(temp_zombies!=NULL)
 	{
-		 status[0]='K';
-                status[1]='I';
-                status[2]='L';
-                status[3]='L';
-                status[4]='E';
-		status[5]='D';
-                status[6]='\0';
+		 strcpy(status,"KILLED");
 		 kprintf("ProcessName:%s Id: %d  Status:%s   \n",temp_zombies->name,temp_zombies->pid, status);
 		 temp_zombies=temp_zombies->next_task;
 	}
