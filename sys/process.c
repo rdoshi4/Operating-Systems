@@ -43,22 +43,6 @@ void copy_fdtable(struct task * current1)
         current1->fd_table[i].reference_count=VFS[i].referenceCount;
     }
 }
-/*
-void copy_VFS(struct task * current)
-{
-	int i;
-        for(i=0;i<100;i++)
-        {
-		strcpy(VFS[i].name, current->VFSproc[i].name);
-		current->VFSproc[i].fd=VFS[i].fd;
-                current->VFSproc[i].f_address=
-                strcpy(VFS[i].typeflag, current->VFSproc[i].typeflag);
-                current->VFSproc[i].size=VFS[i].size;
-                current->VFSproc[i].parent=VFS[i].parent;
-                current->VFSproc[i].referenceCount=VFS[i].referenceCount;
-	}
-}
-*/
 int getPid()
 {
 	int i;
@@ -84,8 +68,6 @@ void switch_to()
 }
 uint64_t wait()
 {
-//	if(next->next_task->pid==pid)
-//	{
 		current->state=4;
 		current->kern_rsp=parent_rsp;
 		struct task * child=current->next_task;
@@ -95,12 +77,10 @@ uint64_t wait()
 		set_tss_rsp((void *)(child->kern_rsp));
 		current=child;
 		uint64_t start_addr=((uint64_t)current->cr3 & 0x000000000fffffful);
-	//	__asm volatile("movq %%rsp, %0": "=b"(prev->kern_rsp));
 		__asm volatile("movq %0, %%cr3":: "b"(start_addr));
 		__asm volatile("movq %0, %%rsp":: "b"(current->kern_rsp));
 		__asm volatile("movq %0, %%rax":: "r"((uint64_t)0));
 		__asm volatile("iretq");
-//	}
 	return 0;
 }
 uint64_t yield()
@@ -116,19 +96,6 @@ uint64_t yield()
                 __asm volatile("movq %0, %%rax":: "r"((uint64_t)0));
                 __asm volatile("iretq");
 return 0;	
-}
-void thread2_func()
-{
-	struct task *temp=current;
-	current=next;
-	next=temp;
-	switch_to();
-	//kprintf("hi");
-	//temp=current;
-        //current=next;
-        //next=temp;
-	//switch_to();
-	while(1);
 }
 uint64_t  ps()
 {
@@ -172,7 +139,6 @@ return 0;
 void switch_to_ring3()
 { 	
        set_tss_rsp((void *)(next->kern_rsp));
-//	current=next;
 	next->cr3=(uint64_t *)((uint64_t)next->cr3 & 0x000000000fffffful);
 	__asm volatile("cli;"\
 	"movq %0,%%cr3;"\
@@ -196,22 +162,12 @@ void switch_to_ring3()
 	__asm volatile("iretq;");
 }
 
-//uint64_t  mmap(uint64_t length, uint64_t flags)
-//static void mmap(reg r)
-//static uint64_t  mmap(reg r)
-//{
-//    uint64_t val=-1;
-//    if(r.rcx == 9)    //syscall 9 - mmap
-//    {
-
 uint64_t sleep(uint64_t time)
 {
 //__asm("sti;");
 uint64_t curr_ticks=0;
 while(curr_ticks!=1193180*time*5)
 {
-//	yield();
-//	kprintf("JI");
 	curr_ticks++;
 }
 return 0;
@@ -230,7 +186,6 @@ uint64_t execve(uint64_t argv,uint64_t argc)
 	file_name[len]='\0';
 	memcpy(args,(char *)argc,arg_len);
 	args[arg_len]='\0';
-	//strcpy(current->name,file_name);
 	int i=0;
 	while(file_name[i]!='\0')
 	{
@@ -252,8 +207,7 @@ uint64_t execve(uint64_t argv,uint64_t argc)
 	current->mm_struct=NULL;
 	exec_binary(file_name,current);
 //allocate space for stack
-	uint64_t p_addr=(uint64_t)allocate_page();
-     		
+	uint64_t p_addr=(uint64_t)allocate_page();	
 	map_vir_phy_user(stack_end-0x1000,p_addr,pml4);
 	struct vma *new = (struct vma *)kmalloc();
 	new->start_addr=(uint64_t)stack_start;
@@ -272,68 +226,15 @@ uint64_t execve(uint64_t argv,uint64_t argc)
 	//current->rsp= (uint64_t)current->user_stack + 0x1000 - 8;
 	*((uint64_t *)(current->rsp))=addr;
 	current->rsp=current->rsp -8;
-	//current->rip=0x4000f0;
-	//__asm volatile("movq %0, %%rsp":: "r"(current->rsp));
-	//__asm volatile("pushq $0");
-	//__asm volatile("pushq %%rax;"::"r"(argc));
-	//__asm volatile("pushq %%rax;"::"r"((uint64_t)arg_num));
-	//__asm  volatile("movq %%rsp,%0;":"=r"(current->rsp):);
-	 //cr3=(uint64_t)current->cr3 & 0x000000000fffffful;
-	//__asm  volatile("movq %%rsp,%0;":"=r"(current->rsp):);
-	//__asm volatile("movq %0, %%rsp":: "r"(current->kern_rsp));
-	//set_tss_rsp((void *)(current->kern_rsp));
-	 __asm volatile("cli;"
-        "mov $0x23,%%ax;"\
-        "mov %%ax,%%ds;"\
-        "mov %%ax,%%es;"\
-        "mov %%ax,%%fs;"\
-        "mov %%ax,%%gs;"\
-        "movq %0,%%rax;"\
-        "pushq $0x23;"\
-        "pushq %%rax;"\
-        "pushfq;"\
-        "popq %%rax;"\
-        "orq $0x200,%%rax;"\
-        "pushq %%rax;"\
-        "pushq $0x2B;"\
-        "pushq %1;"\
-        "movq $0x0,%%rdi;"\
-        "movq $0x0,%%rsi;"
-        ::"b"(current->rsp),"c"(current->rip));
-        __asm volatile("iretq;");
-
-/*	__asm volatile("cli;"
-        "mov $0x23, %%ax;"\
-        "mov %%ax, %%ds;"\
-        "mov %%ax, %%es;"\
-        "mov %%ax, %%fs;"\
-        "mov %%ax, %%gs;"\
-        "pushq $0x23;"\
-        "pushq %0;"\
-        "pushfq;"\
-	::"b"(current->rsp));
-
-	__asm volatile(
-	"pushq $0x2B;"\
-        "pushq %0;"\
-        ::"b"(current->rip));
-	__asm volatile("iretq");*/
-
+	switch_to_ring3();
 return 1;
 }
 
 uint64_t mmap(uint64_t length)
 {
-//      uint64_t addr = r.rax;
-//        uint64_t length = r.rbx;//r.rbx;
-//	uint64_t prot = r.rcx;//r.rcx;
-//	uint64_t flags = arg4;//r.rdx;
 	uint64_t val=-1;
-	//kprintf("\n yea! inside mmap");
-	//kprintf("\n length mmap : %d", length);
 	struct vma *new=(struct vma *)kmalloc();
 	new->type=3;
-//	void *start=(void *)allocate_page();
 	if(current->mm_struct ==NULL)
 	{	
 		new->start_addr=(uint64_t)current->heap;
@@ -341,7 +242,6 @@ uint64_t mmap(uint64_t length)
 		current->heap=current->heap+0x1000;
 		new->next=NULL;
 		return new->start_addr;
-		//kprintf("\n val : %d", val);
 	}
 	else
 	{
@@ -369,10 +269,6 @@ uint64_t mmap(uint64_t length)
 	}
     return val;
 }
-//void initializeSysCall(reg r)
-//{
-//  handleRegInterrupt(128, mmap);
-//}
 void move_to_zombie(struct task *zombie)
 {
 	zombie->next_task=NULL;
@@ -405,96 +301,87 @@ uint64_t is_waiting(int pid)
 }
 uint64_t exit(uint64_t status)
 {
-current->state=3;
-clear_child_memory();
-struct task * temp=current->next_task;
-struct task * temp1=init_kernel;
-while(temp1->next_task!=current)
-{
-	temp1=temp1->next_task;
-}
-temp1->next_task=current->next_task;
-if(is_waiting(current->ppid))
-	free_phy_page((uint64_t)current);
-else
-	move_to_zombie(current);
-//free_phy_page((uint64_t)current);
-struct vma * temp_vma=current->mm_struct;
-       while(temp_vma!=NULL)
-       {
-                        struct vma *delete=temp_vma;
-                        temp_vma=temp_vma->next;
-                        delete->next=NULL;
-                        free_phy_page((uint64_t)delete);
-       }
+	current->state=3;
+	clear_child_memory();
+	struct task * temp=current->next_task;
+	struct task * temp1=init_kernel;
+	while(temp1->next_task!=current)
+	{
+		temp1=temp1->next_task;
+	}
+	temp1->next_task=current->next_task;
+	if(is_waiting(current->ppid))
+		free_phy_page((uint64_t)current);
+	else
+		move_to_zombie(current);
+	//free_phy_page((uint64_t)current);
+	struct vma * temp_vma=current->mm_struct;
+	       while(temp_vma!=NULL)
+	       {
+				struct vma *delete=temp_vma;
+				temp_vma=temp_vma->next;
+				delete->next=NULL;
+				free_phy_page((uint64_t)delete);
+	       }
 
-current=temp;
-temp->state=RUNNING;
-uint64_t start_addr=((uint64_t)temp->cr3 & 0x000000000fffffful);
-set_tss_rsp((void *)(temp->kern_rsp));
-__asm volatile("movq %0, %%cr3":: "b"(start_addr));
-__asm volatile("movq %0, %%rsp":: "b"(temp->kern_rsp));
-__asm volatile("iretq;");
-//__asm volatile("movq %0, %%rax":: "r"((uint64_t)0));
-return 0;	
+	current=temp;
+	temp->state=RUNNING;
+	uint64_t start_addr=((uint64_t)temp->cr3 & 0x000000000fffffful);
+	set_tss_rsp((void *)(temp->kern_rsp));
+	__asm volatile("movq %0, %%cr3":: "b"(start_addr));
+	__asm volatile("movq %0, %%rsp":: "b"(temp->kern_rsp));
+	__asm volatile("iretq;");
+	//__asm volatile("movq %0, %%rax":: "r"((uint64_t)0));
+	return 0;	
 }
 uint64_t kill(uint64_t pid)
 {
-if(pid >= (current->pid-1))
-{
-	kprintf("process does not exist\n");
-	return 0;
-}
-struct task *temp2=zombie_list;
-while(temp2!=NULL)
-{
-	if(temp2->pid==pid)
+	if(pid >= (current->pid-1))
 	{
-		kprintf("process already killed");
+		kprintf("process does not exist\n");
 		return 0;
 	}
-temp2=temp2->next_task;
-}
-/*if(pid==1)
-{
-	current->next_task=init_kernel;
-}*/
-	//current=to_be_run;
-struct task * temp1=init_kernel;
-while(temp1->next_task->pid!=pid)
-{
-        temp1=temp1->next_task;
-}
-struct task * delete=temp1->next_task;
-if(delete->pid==1)
-{
-	temp1->next_task = init_kernel;
-	current->ppid=0;
-}
-temp1->next_task=delete->next_task;
-free_phy_page((uint64_t)delete);
-return 0;
+	struct task *temp2=zombie_list;
+	while(temp2!=NULL)
+	{
+		if(temp2->pid==pid)
+		{
+			kprintf("process already killed");
+			return 0;
+		}
+	temp2=temp2->next_task;
+	}
+	struct task * temp1=init_kernel;
+	while(temp1->next_task->pid!=pid)
+	{
+		temp1=temp1->next_task;
+	}
+	struct task * delete=temp1->next_task;
+	if(delete->pid==1)
+	{
+		temp1->next_task = init_kernel;
+		current->ppid=0;
+	}
+	temp1->next_task=delete->next_task;
+	free_phy_page((uint64_t)delete);
+	return 0;
 }
 uint64_t fork()
 {
 	struct task *child=(struct task *)kmalloc();
  	child->pid=getPid();
-	//child->state=RUNNING;
-	//current->state=READY;
 	child->next_task=NULL;
 	uint64_t * pml4c = (uint64_t *)kmalloc();
 	child->cr3=pml4c;
 	child->next_task=NULL;
 	child->ppid=current->pid;
 	child->heap=heap_start;
-	//struct task *temp=current->next_task;
 	current->next_task=child;
 	struct task *temp=init_kernel;
 	while(temp->next_task!=current)
 	{
 		temp=temp->next_task;
 	}
-	//child->next_task=temp;
 	temp->next_task=child;
 	child->next_task=current;
 	struct vma * head=current->mm_struct;
@@ -548,82 +435,52 @@ uint64_t fork()
 	child->kern_rsp=child->kern_rsp-stack_offset;
 	return child->pid;
 }
-void thread1_func()
-{
-       // switch_to_ring3();
-	switch_to();
-	kprintf("retured from thread 2");
-	struct task *temp=current;
-        current=next;
-        next=temp;
-	switch_to();
-      //initializeIDT();
-//	__asm volatile("sti");
-	//while(1);
-}
 
 //the iniital kernel process 
 void initial_kernel_thread()
 {
-struct task *task1=(struct task *)kmalloc();
-task1->state=RUNNING;
-//task1->pid=getPid();
-task1->kernstack=(char *)kmalloc()+0x1000;
-task1->rsp=(uint64_t)task1->kernstack-8;
-task1->cr3=(uint64_t *)((uint64_t)get_cr3() | vir_start);
-*(uint64_t *)(task1->rsp)=(uint64_t)(&thread1_func);
+	struct task *task1=(struct task *)kmalloc();
+	task1->state=RUNNING;
+	//task1->pid=getPid();
+	task1->kernstack=(char *)kmalloc()+0x1000;
+	task1->rsp=(uint64_t)task1->kernstack-8;
+	task1->cr3=(uint64_t *)((uint64_t)get_cr3() | vir_start);
+	*(uint64_t *)(task1->rsp)=(uint64_t)(&thread1_func);
 
-struct task *task3=(struct task *)kmalloc();
-task3->state=SLEEPING;
-task3->pid=getPid();
-current=task1;
-//while(1);
-
-//struct task *task2=(struct task *)kmalloc();
-//task2->state=SLEEPING;
-//task2->pid=getPid();
-//task2->kernstack=(char *)kmalloc()+0x1000;
-//task2->rsp=(uint64_t)task2->kernstack-8;
-//*(uint64_t *)(task2->rsp)=(uint64_t)(&thread2_func);
-//next=task2;
-uint64_t * pml4u = (uint64_t *)kmalloc();
-task3->cr3=pml4u;
-uint64_t curr_cr3 = (uint64_t)get_cr3();
-uint64_t *c3_vir = (uint64_t *)(curr_cr3 | vir_start);
-task3->cr3[511] = c3_vir[511];
-uint64_t *addr=(uint64_t *)allocate_page();
-map_vir_phy_user((uint64_t)stack_end-0x1000,(uint64_t)addr,pml4u);
-task3->user_stack=(char *)stack_end-0x1000;
-task3->rsp=(uint64_t)task3->user_stack + 0x1000 - 8;
-struct vma *new = (struct vma *)kmalloc();
-new->start_addr=(uint64_t)stack_start;
-new->end_addr=stack_end;
-new->next=NULL;
-new->type=2;
-task3->mm_struct=new;
-task3->kernstack=(char *)kmalloc();
-task3->ppid=0;
-task3->kern_rsp=(uint64_t)(task3->kernstack) + 0x1000 -16;
-task3->heap=heap_start;
-//uint64_t *faddr=(uint64_t *)allocate_page();
-//map_vir_phy_user((uint64_t)faddr,(uint64_t)faddr,pml4u);
-//uint64_t * src=(uint64_t *)((uint64_t)&thread3_func & 0xfffffffffffff000ull);
-//memcpy((uint64_t*)((uint64_t)faddr|vir_start),src,4096);
-//task3->rip=(uint64_t)faddr | ((uint64_t)&thread3_func & 0xfff);
-init_kernel=current;
-uint64_t start_addr=((uint64_t)task3->cr3 & 0x000000000fffffful);
- __asm volatile("movq %0, %%cr3":: "b"(start_addr));
-copy_fdtable(task3);
-next=task3;
-current=next;
-exec_binary("bin/init",task3);
-start_addr=((uint64_t)task1->cr3 & 0x000000000fffffful);
-__asm volatile("movq %0, %%cr3":: "b"(start_addr));
-//while(1)
-//{
+	struct task *task3=(struct task *)kmalloc();
+	task3->state=SLEEPING;
+	task3->pid=getPid();
+	current=task1;
+	uint64_t * pml4u = (uint64_t *)kmalloc();
+	task3->cr3=pml4u;
+	uint64_t curr_cr3 = (uint64_t)get_cr3();
+	uint64_t *c3_vir = (uint64_t *)(curr_cr3 | vir_start);
+	task3->cr3[511] = c3_vir[511];
+	uint64_t *addr=(uint64_t *)allocate_page();
+	map_vir_phy_user((uint64_t)stack_end-0x1000,(uint64_t)addr,pml4u);
+	task3->user_stack=(char *)stack_end-0x1000;
+	task3->rsp=(uint64_t)task3->user_stack + 0x1000 - 8;
+	struct vma *new = (struct vma *)kmalloc();
+	new->start_addr=(uint64_t)stack_start;
+	new->end_addr=stack_end;
+	new->next=NULL;
+	new->type=2;
+	task3->mm_struct=new;
+	task3->kernstack=(char *)kmalloc();
+	task3->ppid=0;
+	task3->kern_rsp=(uint64_t)(task3->kernstack) + 0x1000 -16;
+	task3->heap=heap_start;
+	init_kernel=current;
+	uint64_t start_addr=((uint64_t)task3->cr3 & 0x000000000fffffful);
+	 __asm volatile("movq %0, %%cr3":: "b"(start_addr));
+	copy_fdtable(task3);
+	next=task3;
+	current=next;
+	exec_binary("bin/init",task3);
+	start_addr=((uint64_t)task1->cr3 & 0x000000000fffffful);
+	__asm volatile("movq %0, %%cr3":: "b"(start_addr));
 	 __asm volatile("mov %%rsp,%0":"=a"(init_kernel->kern_rsp)::"memory");
 	init_kernel->next_task=current;
 	current->next_task=init_kernel;
 	switch_to_ring3();
-//}
 }
